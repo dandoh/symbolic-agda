@@ -1,0 +1,4 @@
+## Agda files
+*.agdai
+.agda-stdlib.sed
+
