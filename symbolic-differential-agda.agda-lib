@@ -1,3 +1,0 @@
-name: symbolic-agda
-depend: standard-library
-include: src
