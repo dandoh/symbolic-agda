@@ -1,5 +1,7 @@
 
 ```
+
+{-# OPTIONS --allow-unsolved-metas #-}
 module symbolic.Exp where
 
 open import Data.List as List using (List; []; _∷_)
@@ -21,70 +23,96 @@ syntax Σ-syntax A (λ a → B) = Σ a ∶ A • B
 
 ```
 
+Our symbolic calculator operates on tensors (i.e multi-dimensional variables, i.e grid of numbers).
+The "type" of expression is determined by its shape (e.g 2X3, 3X4X5) and the kind of value (ℝ, ℂ or 𝟙-form)
+it contains.
+
+For example, ‶x : Exp (2X3) ℝ″ represents 2x3 matrix:
+  [ x₁₁   x₁₂   x₁₃
+    x₂₁   x₂₂   x₂₃
+  ]
+  where xᵢⱼ : ℝ
+
+And differential of x, ‶d(x) : Exp (2X3) 𝟙-form″ represents 2x3 matrix:
+  [ d(x₁₁)   d(x₁₂)   d(x₁₃)
+    d(x₂₁)   d(x₂₂)   d(x₂₃)
+  ]
+
+
+Shape is a list of natural numbers each indicate size of corresponding dimension.
+An empty list is the shape of scalar values.
 ```
 Shape : Set
 Shape = List Nat.ℕ
 
 Scalar : Shape
 Scalar = []
+```
 
+There are 3 kinds of elements: complex number, real number, and 1-form (differential).
+```
 data Number : Set where
   Real : Number
   Complex : Number
+
 
 data Element : Set where
   Num : Number → Element
   𝟙-form : Element
 
 ℝ = Num Real
-
 ℂ = Num Complex
 
 ```  
 
+V is our datatype for variable identifier. Each variable is uniquely identified by a name and a shape.
 ```
-infix 5 δ_/δ_
-infixl 6 _+_ 
-infixl 7 _*_ _*δ_
-infix 8 _∙_ _+_i
--- infix 8 _**_
-infix 9 _[_]
-
 data V : Shape → Set where
-  _[_] : String → (shape : Shape) → V shape
+  VV : String → (shape : Shape) → V shape
 
+```
+
+Now, expression constructors
+```
 data Exp : Shape → Element → Set where
+  -- From literal Float value
   ‵_ : {shape : Shape} → Float → Exp shape ℝ
+  -- From variable identifier.
   Var : {shape : Shape} → V shape → Exp shape ℝ
-  DVar : {shape : Shape} → V shape → Exp shape 𝟙-form
 
+  -- Pointwise sum of expressions
+  -- Arguments is non-empty list of expressions because addition is associative
+  -- We can only sum same shape and same element type
+  -- ℝ, ℂ, or 𝟙-form are all addable.
   Sum : {shape : Shape} → {et : Element} → List⁺ (Exp shape et) → Exp shape et
+
+  -- Pointwise product of expressions
+  -- Arguments is non-empty list of expressions because multiplication is associative
+  -- We can only take product same shape and same element type
+  -- For number type only
   Product : {shape : Shape} → {nt : Number} → List⁺ (Exp shape (Num nt)) → Exp shape (Num nt)
 
-  -- Power : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Float → Exp shape (Num nt)
-
+  -- Forming a complex expression from real part and imaginary part
   _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
+  -- Taking real part
   Re : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+  -- Taking imaginary part
   Im : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+  -- Dot product, multiply pointwise then sum all elements
+  _∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+```
 
-  Dot : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+Constructors for 𝟙-form for computing differentials.
 
+```
+  -- Represent differential of a varialbe
+  DVar : {shape : Shape} → V shape → Exp shape 𝟙-form
+  -- Differential dot product, multiply real with diffrential pointwise then sum all elements
   _∙δ_ : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
+  -- Pointwise multiplication real with diffrential pointwise then sum all elements
   _*δ_ : {shape : Shape} → Exp shape  ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
-  
 
-data ℝ-normalized : {s : Shape} → Exp s ℝ → Set where
-  Literal : {shape : Shape} → {x : Float} → ℝ-normalized {s = shape} (‵ x)
-  Var : {shape : Shape} → {v : V shape} → ℝ-normalized {s = shape} (Var v)
-  Sum : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Sum $ List⁺.map proj₁ xs)
-  Product : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Product $ List⁺.map proj₁ xs)
-  -- Power : {shape : Shape} {α : Float} → (e : Exp shape ℝ) → ℝ-normalized e → ℝ-normalized (Power e α)
-  Dot : {shape : Shape} → (e1 e2 : Exp shape ℝ) → ℝ-normalized e1 → ℝ-normalized e2 → ℝ-normalized (Dot e1 e2)
-
-data ℂ-normalized {shape : Shape} : Exp shape ℂ → Set where
-  ReIm : {e1 e2 : Exp shape ℝ}
-       → {ℝ-normalized e1} → {ℝ-normalized e2}
-       → ℂ-normalized (e1 + e2 i)
+  -- TODO: Add more constructors: scale, division, trigonometry, log, exp, fourier-transform
 ```
 
 ```
@@ -94,60 +122,12 @@ a + b = Sum (a ∷ b ∷ [])
 _*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
 a * b = Product (a ∷ b ∷ [])
 
--- _**_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Float → Exp shape (Num nt)
--- _**_ = Power
-
-_∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
-_∙_ = Dot
-
 ```
 
 ```
+infix 5 δ_/δ_
+infixl 6 _+_ 
+infixl 7 _*_ _*δ_
+infix 8 _∙_ _+_i
 
-
-data E : Set where
-  T : E
-  Sum : List E → E
-
-haha : E → Nat.ℕ
-hahaList : List E → List Nat.ℕ
-
-hahaList [] = []
-hahaList (x ∷ xs) = haha x ∷ hahaList xs
-
-haha T =  1
-haha (Sum xs) = List.foldl Nat._+_ 0 $ hahaList xs
-  
-
-
-
-normalize : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt)
--- normalize-ℂ : {shape : Shape} → Exp shape ℂ → Exp shape ℝ × Exp shape ℝ
-
--- normalize-ℂ (Sum (e ∷ [])) = normalize-ℂ e
--- normalize-ℂ (Sum (e₁ ∷ e₂ ∷ es)) =  normalize-ℂ (Sum (e₂ ∷ es))
-  -- let normalizedEs = List⁺.map normalize-ℂ es
-  --     re = Sum $ List⁺.map proj₁ normalizedEs
-  --     im =  Sum $ List⁺.map proj₂ normalizedEs
-  --  in (re , im)
--- normalize-ℂ (Product x) = {!!}
--- normalize-ℂ (re + im i) =  normalize re , (normalize im) 
--- normalize-ℂ (Dot exp exp₁) = {!!}
-
-
-normalize = {!!}
-
-
-sat-normalize-ℝ : {shape : Shape} → (e : Exp shape ℝ) → ℝ-normalized (normalize e)
-sat-normalize-ℝ = {!!}
-
-
-```
-
-
-```
-δ_/δ_ : {shape : Shape} → Exp Scalar (Num Real) → V shape → Exp shape (Num Real)
-δ f /δ x = {!!}
-  
-  
 ```
