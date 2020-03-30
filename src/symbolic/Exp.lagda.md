@@ -28,15 +28,17 @@ The "type" of expression is determined by its shape (e.g 2X3, 3X4X5) and the kin
 it contains.
 
 For example, ‶x : Exp (2X3) ℝ″ represents 2x3 matrix:
-  [ x₁₁   x₁₂   x₁₃
-    x₂₁   x₂₂   x₂₃
-  ]
+
+  x₁₁   x₁₂   x₁₃
+  x₂₁   x₂₂   x₂₃
+ 
   where xᵢⱼ : ℝ
 
 And differential of x, ‶d(x) : Exp (2X3) 𝟙-form″ represents 2x3 matrix:
-  [ d(x₁₁)   d(x₁₂)   d(x₁₃)
-    d(x₂₁)   d(x₂₂)   d(x₂₃)
-  ]
+
+  d(x₁₁)   d(x₁₂)   d(x₁₃)
+  d(x₂₁)   d(x₂₂)   d(x₂₃)
+ 
 
 
 Shape is a list of natural numbers each indicate size of corresponding dimension.
@@ -102,17 +104,19 @@ data Exp : Shape → Element → Set where
   _∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
 ```
 
-Constructors for 𝟙-form for computing differentials.
+Constructors 𝟙-form, for computing differentials.
 
 ```
   -- Represent differential of a varialbe
   DVar : {shape : Shape} → V shape → Exp shape 𝟙-form
+  -- Differential of non-variable is zero, e.g: d(‵ 1) = DZero
+  DZero : {shape : Shape} → Exp shape 𝟙-form
   -- Differential dot product, multiply real with diffrential pointwise then sum all elements
   _∙δ_ : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
   -- Pointwise multiplication real with diffrential pointwise then sum all elements
   _*δ_ : {shape : Shape} → Exp shape  ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
 
-  -- TODO: Add more constructors: scale, division, trigonometry, log, exp, fourier-transform
+  -- TODO: Add more constructors: scale, power, division, trigonometry, log, exp, fourier-transform
 ```
 
 ```
@@ -125,9 +129,11 @@ a * b = Product (a ∷ b ∷ [])
 ```
 
 ```
-infix 5 δ_/δ_
 infixl 6 _+_ 
 infixl 7 _*_ _*δ_
 infix 8 _∙_ _+_i
 
 ```
+
+Examples of expressions
+
