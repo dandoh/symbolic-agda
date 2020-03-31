@@ -1,7 +1,5 @@
 
 ```
-
-{-# OPTIONS --allow-unsolved-metas #-}
 module symbolic.Exp where
 
 open import Data.List as List using (List; []; _∷_)
@@ -132,6 +130,22 @@ a * b = Product (a ∷ b ∷ [])
 infixl 6 _+_ 
 infixl 7 _*_ _*δ_
 infix 8 _∙_ _+_i
+
+```
+
+
+```
+
+
+scalar : String → Exp [] ℝ
+scalar x = Var (VV x [])
+
+_[_] : String → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
+x [ m ] = Var (VV x (m ∷ []))
+
+_[_X_] : String → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
+x [ m X n ] = Var (VV x (m ∷ n ∷ []))
+
 
 ```
 
