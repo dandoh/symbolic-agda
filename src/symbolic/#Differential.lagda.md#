@@ -1,5 +1,8 @@
+
 ```
-module symbolic.Example where
+{-# OPTIONS --allow-unsolved-metas #-}
+
+module symbolic.Differential where
 
 open import Data.List as List using (List; []; _∷_)
 open import Data.List.NonEmpty as List⁺ using (List⁺; _∷_)
@@ -12,13 +15,22 @@ open import Level using (Level; lift)
   renaming ( _⊔_ to _⊍_ ; suc to ℓsuc; zero to ℓ₀ )
 open import Function as Function using (_$_)
 
+
 open import symbolic.Exp
+open import symbolic.Normalize
+
+```
+
+```
 
 
-x = "x" [ 10 ]
-y = "y" [ 10 ]
-z = "z" [ 10 ]
+```
 
-s = scalar "s"
+Partial derivative
+```
 
+δ_/δ_ : {shape : Shape} → Exp Scalar ℝ → V shape → Exp shape ℝ
+δ f /δ x = {!!}
+  
+  
 ```
