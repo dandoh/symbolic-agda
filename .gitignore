@@ -2,4 +2,6 @@
 *.agdai
 .agda-stdlib.sed
 
+.#*
+
 
