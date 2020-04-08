@@ -23,24 +23,6 @@ open import symbolic.Normalize
 
 ```
 
--- differential : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form
-
--- differentialList : {shape : Shape} → List (Exp shape ℝ) → List (Exp shape 𝟙-form)
--- differentialList [] = []
--- differentialList (x ∷ xs) = differential x ∷ differentialList xs
-
--- differentialList⁺ : {shape : Shape} → List⁺ (Exp shape ℝ) → List⁺ (Exp shape 𝟙-form)
--- differentialList⁺ (x ∷ xs) = differential x ∷ differentialList xs
-
-
--- differential {shape} e with (normalize e) | sat-normalize-ℝ e
--- ... | ‵ x | Literal = DZero
--- ... | Var x | Var = DVar x
--- ... | Sum xs | Sum _ =  Sum (differentialList⁺ xs)
--- ... | Product (x ∷ xs) | Product _ = {!!}
--- ... | x ∙ y | Dot _ _ _ _ = {!!}
-
-
 
 ```
 

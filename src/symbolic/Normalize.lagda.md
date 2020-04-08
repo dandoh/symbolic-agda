@@ -18,7 +18,6 @@ open import Relation.Binary.PropositionalEquality
 open import Function as Function using (_$_)
 
 open import symbolic.Exp
-open import symbolic.Example as E using ()
 
 
 ```
@@ -45,18 +44,18 @@ flattenSum (a + b i) = flattenSum a + flattenSum b i
 flattenSum (Re e) =  Re (flattenSum e)
 flattenSum (Im e) = Im (flattenSum e)
 flattenSum (a ∙ b) =  flattenSum a ∙ flattenSum b
-flattenSum (a ∙δ b) = flattenSum a ∙δ flattenSum b
-flattenSum (a *δ b) =  flattenSum a *δ flattenSum b
+flattenSum (a ∙∂ b) = flattenSum a ∙∂ flattenSum b
+flattenSum (a *∂ b) =  flattenSum a *∂ flattenSum b
 flattenSum e = e
 ```
 
 
 ```
-_ : flattenSum (Sum (E.x ∷ E.y ∷ Sum (E.x ∷ E.z ∷ [] ) ∷ [] )) ≡ Sum (E.x ∷ E.y ∷ E.x ∷ E.z ∷ [])
-_ = refl
+-- _ : flattenSum (Sum (E.x ∷ E.y ∷ Sum (E.x ∷ E.z ∷ [] ) ∷ [] )) ≡ Sum (E.x ∷ E.y ∷ E.x ∷ E.z ∷ [])
+-- _ = refl
 
-_ : flattenSum (Sum (E.x ∷ E.y ∷ Sum (E.x ∷ Sum (E.x ∷ E.y ∷ [])∷ E.z ∷ [] ) ∷ [] )) ≡ Sum (E.x ∷ E.y ∷ E.x ∷ E.x ∷ E.y ∷ E.z ∷ [])
-_ = refl
+-- _ : flattenSum (Sum (E.x ∷ E.y ∷ Sum (E.x ∷ Sum (E.x ∷ E.y ∷ [])∷ E.z ∷ [] ) ∷ [] )) ≡ Sum (E.x ∷ E.y ∷ E.x ∷ E.x ∷ E.y ∷ E.z ∷ [])
+-- _ = refl
 ```
 
 

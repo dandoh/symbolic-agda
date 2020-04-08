@@ -1,4 +1,5 @@
 
+
 ```
 module symbolic.Exp where
 
@@ -7,11 +8,13 @@ open import Data.List.NonEmpty as List⁺ using (List⁺; _∷_)
 open import Data.Nat as Nat using ()
 open import Data.Integer as Int using ()
 open import Data.Float
-open import Data.String
+
+open import Data.String as String using (String)
 open import Data.Product as Product using ( _×_ ; _,_ ; Σ ; proj₁ ; proj₂ )
 open import Level using (Level; lift)
   renaming ( _⊔_ to _⊍_ ; suc to ℓsuc; zero to ℓ₀ )
 open import Function as Function using (_$_)
+open import Relation.Nullary using (¬_; Dec; yes; no)
 
 Σ-syntax : {ℓa ℓb : Level} (A : Set ℓa) (B : A → Set ℓb) → Set (ℓa ⊍ ℓb)
 Σ-syntax = Σ
@@ -70,10 +73,10 @@ Inner product (dot product) for ℝ is pointwise multiplication, then sum all th
 x ∙ y represents a single real number:
  (x₁₁ * y₁₁) + (x₁₂ * y₁₂) + (x₁₃ * y₁₃) + (x₂₁ * y₂₁) + (x₂₂ * y₂₂) + (x₂₃ * y₂₃)
 
-Inner product for ℂ is the same except the second operand is conjugated.
+Inner product for ℂ is the same but the second operand is conjugated.
 
 ** Complex & real operations
-Taking real part or imaginary part, and forming complex number from 2 real parts is defined pointwise similarly as `+` and `*`.
+Taking real part or imaginary part, and forming complex number from 2 real parts are defined as pointwise operations similarly as `+` and `*`.
 
 ** Scaling
 Scaling behaves like scaling we know in vector space, i.e:
@@ -83,33 +86,32 @@ Scaling behaves like scaling we know in vector space, i.e:
 
 ** Subtraction
 // TODO: a - b = a + (-1) `scale` b
-
-
-
-
-TODO: More on this later add we add scaling later.
+// TODO: More on this later as we add scaling.
 
 * Partial derivative and 𝟙-form.
 ** 1-form
 We know in first-year math about implicit differentiation e.g, taking derivative y' = dy/dx on the circle
-  (r, x, y : ℝ)
-   r² = x² + y²
+   r² = x² + y² (r, x, y : ℝ)
  ⇒ 0 = 2x(dx) + 2y(dy)
  ⇒ dy/dx = - x / y
 
-But what are dx, dy? What is their "type"
+But what are dx, dy? What is their "type"?
 
-However, in the language of differential geometry, their type is `𝟙-form`.
-`d` is an operator that turn a scalar field to 𝟙-form field, i.e
+In the language of differential geometry, their type is `𝟙-form`.
+`d` is an operator that turn a scalar field to 𝟙-form (or covector) field, i.e
           f : ℝ² ⟶ ℝ
       then
          df : ℝ² ⟶ 𝟙-form
+ df(xₒ, yₒ) eats a vector in the tangent space at (xₒ, yₒ) and gives us back a real number, or
+ in the language of dependent type:
+   df : (xₒ yₒ : ℝ) → TM(xₒ, yₒ) → ℝ
 
-But we don't need to know about diffrential geometry. The only thing we care about 𝟙-form is that
-𝟙-form and ℝ form a vector space, and that
+But we don't need to know about diffrential geometry. We only need to know that 𝟙-form and ℝ form a vector space,
+and as we expect:
          df = (∂f/∂x) dx + (∂f/∂y) dy
-  and that it gives us a nice way to formalize the type of expressions in the process of computing
+  ...and that it gives us a nice way to formalize the type of expressions in the process of computing
   partial derivatives.
+
 
 ** Multi-dimensional partial derivatives
 Let x, y : Exp 2x2 ℝ
@@ -125,20 +127,34 @@ Let's try to compute partial derivatives of:
      + (x₁₁ + y₁₁) dx₁₁  + (x₁₂ + y₁₂) dx₁₂ 
      + (x₂₁ + y₂₃) dx₂₁  + (x₂₂ + y₂₂) dx₂₂
 
-  ...
+     = (2x₁₁ + y₁₁) dx₁₁ + (2x₁₂ + y₁₂) dx₁₂ 
+     + (2x₂₁ + y₂₁) dx₁₁ + (2x₂₂ + y₂₂) dx₂₂
 
-  Then we can see ∂f/∂x₁₁ = 2x₁₁ + y₁₁, and 
-                  ∂f/∂xᵢⱼ   = 2xᵢⱼ  + yᵢⱼ    ∀ i, j
+  We can see that ∂f/∂xᵢⱼ   = 2xᵢⱼ  + yᵢⱼ    ∀ i, j
 
-But this is a description only using scalar. In fact, we can "lift" the `d` operator as well as
-partial derivatives pointwisely and it will work as normal:
+In our symbolic system, we "lift" the `d` operator as well as partial derivatives to multi-dimensional as:
+  dx = | dx₁₁    dx₁₂ |
+       | dx₂₁    dx₂₂ |
+
+and
+  ∂f / ∂x = | ∂f/∂x₁₁    ∂f/∂x₁₂|
+            | ∂f/∂x₂₁    ∂f/∂x₂₂|
+
+In fact, multi-dimensional calculation shows us that:
 
   df = x d(x + y) + (x + y) dx + y d(x + y) + (x + y) dy
      = (2x + y) dx + (2y + x) dy
 
-  Thus ∂f/∂x = 2x + y, and this agrees with the above calculation.
+  Thus ∂f/∂x = 2x + y, agrees with the above calculation.
+
+Note that f still has to be a scalar real expression !!! 
 
 
+
+
+* Formalize expression in the dependent type
+
+Shape is a list of natural numbers, and an empty list represents dimension-less (scalar) shape.
 ```
 Shape : Set
 Shape = List Nat.ℕ
@@ -147,16 +163,16 @@ Scalar : Shape
 Scalar = []
 ```
 
-There are 3 kinds of elements: complex number, real number, and 1-form (differential).
+There are 3 element types: complex number, real number, and 1-form (or covector, or differential).
 ```
 data Number : Set where
   Real : Number
   Complex : Number
 
 
-data Element : Set where
-  Num : Number → Element
-  𝟙-form : Element
+data ElementType : Set where
+  Num : Number → ElementType
+  𝟙-form : ElementType
 
 ℝ = Num Real
 ℂ = Num Complex
@@ -172,7 +188,7 @@ data V : Shape → Set where
 
 Now, expression constructors
 ```
-data Exp : Shape → Element → Set where
+data Exp : Shape → ElementType → Set where
   -- From literal Float value
   ‵_ : {shape : Shape} → Float → Exp shape ℝ
   -- From variable identifier.
@@ -182,22 +198,22 @@ data Exp : Shape → Element → Set where
   -- Arguments is non-empty list of expressions because addition is associative
   -- We can only sum same shape and same element type
   -- ℝ, ℂ, or 𝟙-form are all addable.
-  Sum : {shape : Shape} → {et : Element} → List⁺ (Exp shape et) → Exp shape et
+  Sum : {shape : Shape} → {et : ElementType} → List⁺ (Exp shape et) → Exp shape et
 
   -- Pointwise product of expressions
   -- Arguments is non-empty list of expressions because multiplication is associative
   -- We can only take product same shape and same element type
   -- For number type only
   Product : {shape : Shape} → {nt : Number} → List⁺ (Exp shape (Num nt)) → Exp shape (Num nt)
-
-  -- Forming a complex expression from real part and imaginary part
-  _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
-  -- Taking real part
-  Re : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
-  -- Taking imaginary part
-  Im : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
   -- Inner product, multiply pointwise then sum all elements
   _∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+
+  -- -- Forming a complex expression from real part and imaginary part
+  -- _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
+  -- -- Taking real part
+  -- Re : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+  -- -- Taking imaginary part
+  -- Im : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
 ```
 
 Constructors 𝟙-form, for computing differentials.
@@ -205,18 +221,21 @@ Constructors 𝟙-form, for computing differentials.
 ```
   -- Represent differential of a varialbe
   DVar : {shape : Shape} → V shape → Exp shape 𝟙-form
+  -- The zero value of 𝟙-form.
   -- Differential of non-variable is zero, e.g: d(‵ 1) = DZero
   DZero : {shape : Shape} → Exp shape 𝟙-form
-  -- Differential dot product, multiply real with diffrential pointwise then sum all elements
-  _∙δ_ : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
-  -- Pointwise multiplication real with diffrential pointwise then sum all elements
-  _*δ_ : {shape : Shape} → Exp shape  ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
+  -- Pointwise multiplication real with diffrential pointwise 
+  -- e.g d(2 * x) = 2 *∂ (dx)
+  _*∂_ : {shape : Shape} → Exp shape  ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
+  -- Multiply real with diffrential pointwise then sum all elements
+  -- For computing differential of dot product
+  _∙∂_ : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
 
   -- TODO: Add more constructors: scale, power, division, trigonometry, log, exp, fourier-transform
 ```
 
 ```
-_+_ : {shape : Shape} → {et : Element} → Exp shape et → Exp shape et → Exp shape et
+_+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
 a + b = Sum (a ∷ b ∷ [])
 
 _*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
@@ -226,8 +245,9 @@ a * b = Product (a ∷ b ∷ [])
 
 ```
 infixl 6 _+_ 
-infixl 7 _*_ _*δ_
-infix 8 _∙_ _+_i
+infixl 7 _*_ _*∂_
+infix 8 _∙_ _∙∂_
+-- _+_i 
 
 ```
 
@@ -235,17 +255,95 @@ infix 8 _∙_ _+_i
 ```
 
 
-scalarVar : String → Exp [] ℝ
-scalarVar x = Var (VV x [])
+var : String → Exp [] ℝ
+var x = Var (VV x [])
 
-_[_] : String → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
-x [ m ] = Var (VV x (m ∷ []))
+var1D : String → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
+var1D x m = Var (VV x (m ∷ []))
 
-_[_X_] : String → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
-x [ m X n ] = Var (VV x (m ∷ n ∷ []))
-
+var2D : String → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
+var2D x m n = Var (VV x (m ∷ n ∷ []))
 
 ```
 
-Examples of expressions
 
+
+* Computing partial derivatives.
+
+If everything is scalar, computing partial derivatives is trivial as we
+just need a recursive function, and apply sum rule, product rule and the
+chain rule.
+
+Multi-dimensional derivatives, however, is not as so.
+We can try:
+```
+partialDerivative' : {shape : Shape} → (f : Exp Scalar ℝ) → V shape → Exp shape ℝ
+```
+If f is constant, then partial derivative is 0[shape]
+```
+partialDerivative' (‵ c) x = ‵ 0.0
+```
+
+If f is a scalar variable, then partial derivative is 1[shape] if shape is scalar and
+x == y, otherwise 0[shape].
+```
+partialDerivative' (Var (VV y .[])) (VV x []) with x String.≈? y
+... | yes _ =  ‵ 1.0
+... | no _ =   ‵ 0.0
+partialDerivative' (Var (VV y .[])) (VV x (n:ns)) =  ‵ 0.0
+```
+
+Sum and product we can apply sum rule and product rule of derivative.
+```
+partialDerivative' (Sum ys) x = Sum {! List⁺.map (λ y → partialDerivative y x) ys !}
+partialDerivative' (Product ys) x = {! TODO: doable!}
+
+```
+But here is where it got tricky!
+y and z can be of higher dimensions, and we only have partialDerivative where the first
+argument is scalar 
+```
+partialDerivative' (y ∙ z) x = {!!}
+```
+So we need other approach.
+
+
+** Plan
+
+The first step is to take differential (multi-dimensional of course), with the following rules:
+  d(x + y) = dx + dy
+  d(xy) = ydx + xdy
+  d(x ∙ y) = x ∙ dy + y ∙ dx
+  d(c) = 0  ∀constant c (here 0 is the zero value of 𝟙-form, not ℝ)
+
+  ...more rules as we add more operators later, such as d(FT(x)) = FT(d(x)) 
+
+
+```
+d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form
+dList : {shape : Shape} → List (Exp shape ℝ) → List (Exp shape 𝟙-form)
+dList [] = []
+dList (x ∷ xs) = d x ∷ dList xs
+
+dList⁺ : {shape : Shape} → List⁺ (Exp shape ℝ) → List⁺ (Exp shape 𝟙-form)
+dList⁺ (x ∷ xs) = d x ∷ dList xs
+
+
+d (‵ x) = DZero
+d (Var x) = DVar x
+d (Sum xs) = Sum (dList⁺ xs)
+d (Product xs) = {!!}
+d (x ∙ y) =  Sum ((x ∙∂ d y) ∷ (y ∙∂ d x) ∷ [])
+```
+
+
+After take differential, we can transform the expression so that it always end up with the form
+
+  // TODO: Data type of this form
+  Either:
+    - DZero (1)
+    - (Exp Scalar ℝ) * (DVar x) (2)
+    - (Exp shape ℝ) ∙ (Exp shape ℝ) (3)
+    - Sum of operands that either in the form of (2) and (3)
+
+Then we can extract all partial derivatives.
