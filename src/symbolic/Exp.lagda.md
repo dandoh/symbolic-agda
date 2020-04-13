@@ -9,18 +9,27 @@ open import Data.Nat as Nat using ()
 open import Data.Integer as Int using ()
 open import Data.Float
 
+
 open import Data.String as String using (String)
 open import Data.Product as Product using ( _×_ ; _,_ ; Σ ; proj₁ ; proj₂ )
 open import Level using (Level; lift)
   renaming ( _⊔_ to _⊍_ ; suc to ℓsuc; zero to ℓ₀ )
-open import Function as Function using (_$_)
+open import Function as Function using (_$_ ; case_of_)
 open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Relation.Binary using (Decidable)
+
+open import Relation.Binary.PropositionalEquality
+  using ( _≡_ ; _≗_ ; refl ; sym ; trans ; cong ; cong₂ ; subst ; module ≡-Reasoning )
 
 Σ-syntax : {ℓa ℓb : Level} (A : Set ℓa) (B : A → Set ℓb) → Set (ℓa ⊍ ℓb)
 Σ-syntax = Σ
 
 infix 2 Σ-syntax
 syntax Σ-syntax A (λ a → B) = Σ a ∶ A • B
+
+
+
+
 
 ```
 
@@ -181,8 +190,27 @@ data ElementType : Set where
 
 V is our datatype for variable identifier. Each variable is uniquely identified by a name and a shape.
 ```
+
+data VarId : Set where
+  X : VarId
+  Y : VarId
+  Z : VarId
+
+
+_≈_ : (x : VarId) → (y : VarId) → Dec (x ≡ y)
+X ≈ X = yes refl
+X ≈ Y = no (λ ())
+X ≈ Z = no (λ ())
+Y ≈ X = no (λ ())
+Y ≈ Y = yes refl
+Y ≈ Z = no (λ ())
+Z ≈ X = no (λ ())
+Z ≈ Y = no (λ ())
+Z ≈ Z = yes refl
+
+
 data V : Shape → Set where
-  VV : String → (shape : Shape) → V shape
+  VV : VarId → (shape : Shape) → V shape
 
 ```
 
@@ -198,15 +226,18 @@ data Exp : Shape → ElementType → Set where
   -- Arguments is non-empty list of expressions because addition is associative
   -- We can only sum same shape and same element type
   -- ℝ, ℂ, or 𝟙-form are all addable.
-  Sum : {shape : Shape} → {et : ElementType} → List⁺ (Exp shape et) → Exp shape et
+  _+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
 
   -- Pointwise product of expressions
   -- Arguments is non-empty list of expressions because multiplication is associative
   -- We can only take product same shape and same element type
   -- For number type only
-  Product : {shape : Shape} → {nt : Number} → List⁺ (Exp shape (Num nt)) → Exp shape (Num nt)
+  _*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
+
   -- Inner product, multiply pointwise then sum all elements
   _∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+
+  
 
   -- -- Forming a complex expression from real part and imaginary part
   -- _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
@@ -235,12 +266,6 @@ Constructors 𝟙-form, for computing differentials.
 ```
 
 ```
-_+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
-a + b = Sum (a ∷ b ∷ [])
-
-_*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
-a * b = Product (a ∷ b ∷ [])
-
 ```
 
 ```
@@ -255,13 +280,13 @@ infix 8 _∙_ _∙∂_
 ```
 
 
-var : String → Exp [] ℝ
+var : VarId → Exp [] ℝ
 var x = Var (VV x [])
 
-var1D : String → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
+var1D : VarId → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
 var1D x m = Var (VV x (m ∷ []))
 
-var2D : String → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
+var2D : VarId → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
 var2D x m n = Var (VV x (m ∷ n ∷ []))
 
 ```
@@ -287,25 +312,34 @@ partialDerivative' (‵ c) x = ‵ 0.0
 If f is a scalar variable, then partial derivative is 1[shape] if shape is scalar and
 x == y, otherwise 0[shape].
 ```
-partialDerivative' (Var (VV y .[])) (VV x []) with x String.≈? y
-... | yes _ =  ‵ 1.0
-... | no _ =   ‵ 0.0
+partialDerivative' (Var (VV y .[])) (VV x []) = case (x ≈ y) of λ
+  { (yes _) → ‵ 1.0
+  ; (no _) → ‵ 0.0
+  }
 partialDerivative' (Var (VV y .[])) (VV x (n:ns)) =  ‵ 0.0
 ```
 
-Sum and product we can apply sum rule and product rule of derivative.
+Sum we can apply sum rule
 ```
-partialDerivative' (Sum ys) x = Sum {! List⁺.map (λ y → partialDerivative y x) ys !}
-partialDerivative' (Product ys) x = {! TODO: doable!}
+partialDerivative' (u + v) x = partialDerivative' u x + partialDerivative' v x
 
 ```
 But here is where it got tricky!
-y and z can be of higher dimensions, and we only have partialDerivative where the first
-argument is scalar 
+
+(partialDerivative' u x) is Exp shape 𝟙-form, but v is Exp Scalar ℝ
+So it is invalid to construct v *∂ (partialDerivative' u x) here.
 ```
-partialDerivative' (y ∙ z) x = {!!}
+partialDerivative' (u * v) x = {!!}
 ```
-So we need other approach.
+And also dot product
+y and z can be of higher dimensions, but we only have partialDerivative where the first
+argument is scalar.
+```
+partialDerivative' (u ∙ v) x = {!!}
+```
+So this doesn't seem to work
+
+We need other approach!
 
 
 ** Plan
@@ -321,29 +355,26 @@ The first step is to take differential (multi-dimensional of course), with the f
 
 ```
 d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form
-dList : {shape : Shape} → List (Exp shape ℝ) → List (Exp shape 𝟙-form)
-dList [] = []
-dList (x ∷ xs) = d x ∷ dList xs
-
-dList⁺ : {shape : Shape} → List⁺ (Exp shape ℝ) → List⁺ (Exp shape 𝟙-form)
-dList⁺ (x ∷ xs) = d x ∷ dList xs
-
-
 d (‵ x) = DZero
 d (Var x) = DVar x
-d (Sum xs) = Sum (dList⁺ xs)
-d (Product xs) = {!!}
-d (x ∙ y) =  Sum ((x ∙∂ d y) ∷ (y ∙∂ d x) ∷ [])
+d (u + v) = d v + d v
+d (u * v) = u *∂ d v + v *∂ d u
+d (u ∙ v) = u ∙∂ d v + v ∙∂ d v
+
 ```
 
+```
+
+
+```
 
 After take differential, we can transform the expression so that it always end up with the form
 
   // TODO: Data type of this form
   Either:
     - DZero (1)
-    - (Exp Scalar ℝ) * (DVar x) (2)
-    - (Exp shape ℝ) ∙ (Exp shape ℝ) (3)
+    - (Exp Scalar ℝ) *∂ (DVar Scalar x) (2)
+    - (Exp shape ℝ) ∙∂ (DVar shape y) (3)
     - Sum of operands that either in the form of (2) and (3)
 
 Then we can extract all partial derivatives.

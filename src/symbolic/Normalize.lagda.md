@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality
   using ( _≡_ ; _≗_ ; refl ; sym ; trans ; cong ; cong₂ ; subst ; module ≡-Reasoning )
 open import Function as Function using (_$_)
 
-open import symbolic.Exp
+-- open import symbolic.Exp
 
 
 ```
@@ -25,28 +25,28 @@ As addition and multiplication are associative, the first step is to flatten any
 
 Sum [a, Sum [b, Sum [c , d]], e, f] -> Sum [a , b , c , d , e , f]
 ```
-sumOperands : {shape : Shape} → {et : Element} → Exp shape et → List⁺ (Exp shape et)
-sumOperands (Sum x) = x
-sumOperands e = e ∷ []
+-- sumOperands : {shape : Shape} → {et : ElementType} → Exp shape et → List⁺ (Exp shape et)
+-- sumOperands (Sum x) = {!!}
+-- sumOperands e = e ∷ []
 
-flattenSum : {shape : Shape} → {et : Element} → Exp shape et → Exp shape et
+-- flattenSum : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et
 
-flattenSumList : {shape : Shape} → {et : Element} → List (Exp shape et) → List (Exp shape et)
-flattenSumList [] = []
-flattenSumList (x ∷ xs) =  flattenSum x ∷ flattenSumList xs
+-- flattenSumList : {shape : Shape} → {et : ElementType} → List (Exp shape et) → List (Exp shape et)
+-- flattenSumList [] = []
+-- flattenSumList (x ∷ xs) =  flattenSum x ∷ flattenSumList xs
 
-flattenSumList⁺ : {shape : Shape} → {et : Element} → List⁺ (Exp shape et) → List⁺ (Exp shape et)
-flattenSumList⁺ (x ∷ xs) =  flattenSum x ∷ flattenSumList xs
+-- flattenSumList⁺ : {shape : Shape} → {et : ElementType} → List⁺ (Exp shape et) → List⁺ (Exp shape et)
+-- flattenSumList⁺ (x ∷ xs) =  flattenSum x ∷ flattenSumList xs
 
-flattenSum (Sum xs) = Sum (List⁺.concatMap sumOperands (flattenSumList⁺ xs))
-flattenSum (Product (x ∷ xs)) = Product (flattenSum x ∷ flattenSumList xs)
-flattenSum (a + b i) = flattenSum a + flattenSum b i
-flattenSum (Re e) =  Re (flattenSum e)
-flattenSum (Im e) = Im (flattenSum e)
-flattenSum (a ∙ b) =  flattenSum a ∙ flattenSum b
-flattenSum (a ∙∂ b) = flattenSum a ∙∂ flattenSum b
-flattenSum (a *∂ b) =  flattenSum a *∂ flattenSum b
-flattenSum e = e
+-- flattenSum (Sum xs) = Sum (List⁺.concatMap sumOperands (flattenSumList⁺ xs))
+-- flattenSum (Product (x ∷ xs)) = Product (flattenSum x ∷ flattenSumList xs)
+-- flattenSum (a + b i) = flattenSum a + flattenSum b i
+-- flattenSum (Re e) =  Re (flattenSum e)
+-- flattenSum (Im e) = Im (flattenSum e)
+-- flattenSum (a ∙ b) =  flattenSum a ∙ flattenSum b
+-- flattenSum (a ∙∂ b) = flattenSum a ∙∂ flattenSum b
+-- flattenSum (a *∂ b) =  flattenSum a *∂ flattenSum b
+-- flattenSum e = e
 ```
 
 
@@ -69,19 +69,19 @@ Define a data type NoSum that list every non-sum-constructor ?
 
 To compute differential of a ℝ expression, we need first normalize it to ℝ-normalized form.
 ```
-data ℝ-normalized : {s : Shape} → Exp s ℝ → Set where
-  Literal : {shape : Shape} → {x : Float} → ℝ-normalized {s = shape} (‵ x)
-  Var : {shape : Shape} → {v : V shape} → ℝ-normalized {s = shape} (Var v)
-  Sum : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Sum $ List⁺.map proj₁ xs)
-  Product : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Product $ List⁺.map proj₁ xs)
-  Dot : {shape : Shape} → (e1 e2 : Exp shape ℝ) → ℝ-normalized e1 → ℝ-normalized e2 → ℝ-normalized (e1 ∙ e2)
+-- data ℝ-normalized : {s : Shape} → Exp s ℝ → Set where
+--   Literal : {shape : Shape} → {x : Float} → ℝ-normalized {s = shape} (‵ x)
+--   Var : {shape : Shape} → {v : V shape} → ℝ-normalized {s = shape} (Var v)
+--   Sum : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Sum $ List⁺.map proj₁ xs)
+--   Product : {shape : Shape} → (xs : List⁺ (Σ e ∶ Exp shape ℝ • ℝ-normalized e)) → ℝ-normalized (Product $ List⁺.map proj₁ xs)
+--   Dot : {shape : Shape} → (e1 e2 : Exp shape ℝ) → ℝ-normalized e1 → ℝ-normalized e2 → ℝ-normalized (e1 ∙ e2)
 
 
 ```
 And ℝ-normalized is coupled with ℂ-normalized.
 ```
-data ℂ-normalized {shape : Shape} : Exp shape ℂ → Set where
-  ReIm : {e1 e2 : Exp shape ℝ}
-       → {ℝ-normalized e1} → {ℝ-normalized e2}
-       → ℂ-normalized (e1 + e2 i)
+-- data ℂ-normalized {shape : Shape} : Exp shape ℂ → Set where
+--   ReIm : {e1 e2 : Exp shape ℝ}
+--        → {ℝ-normalized e1} → {ℝ-normalized e2}
+--        → ℂ-normalized (e1 + e2 i)
 ```
