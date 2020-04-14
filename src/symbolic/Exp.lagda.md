@@ -210,7 +210,7 @@ Z ≈ Z = yes refl
 
 
 data V : Shape → Set where
-  VV : VarId → (shape : Shape) → V shape
+  VV : {shape : Shape} → VarId → V shape
 
 ```
 
@@ -226,41 +226,47 @@ data Exp : Shape → ElementType → Set where
   -- Arguments is non-empty list of expressions because addition is associative
   -- We can only sum same shape and same element type
   -- ℝ, ℂ, or 𝟙-form are all addable.
-  _+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
+  Sum : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
 
   -- Pointwise product of expressions
   -- Arguments is non-empty list of expressions because multiplication is associative
   -- We can only take product same shape and same element type
   -- For number type only
-  _*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
+  Product : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℝ
 
   -- Inner product, multiply pointwise then sum all elements
-  _∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+  Dot : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
 
-  
+  --
+  Scale : {shape : Shape} → Exp Scalar ℝ → Exp shape ℝ → Exp shape ℝ 
 
-  -- -- Forming a complex expression from real part and imaginary part
-  -- _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
-  -- -- Taking real part
-  -- Re : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
-  -- -- Taking imaginary part
-  -- Im : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+
 ```
+Complex number 
+```
+  -- Forming a complex expression from real part and imaginary part
+  _+_i : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℂ
 
+```
 Constructors 𝟙-form, for computing differentials.
-
 ```
-  -- Represent differential of a varialbe
-  DVar : {shape : Shape} → V shape → Exp shape 𝟙-form
-  -- The zero value of 𝟙-form.
-  -- Differential of non-variable is zero, e.g: d(‵ 1) = DZero
-  DZero : {shape : Shape} → Exp shape 𝟙-form
+  -- The zero value of 𝟙-form
+  d0 : {shape : Shape} → Exp shape 𝟙-form
   -- Pointwise multiplication real with diffrential pointwise 
   -- e.g d(2 * x) = 2 *∂ (dx)
-  _*∂_ : {shape : Shape} → Exp shape  ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
+  _*d_ : {shape : Shape} → Exp shape ℝ → V shape → Exp shape 𝟙-form
   -- Multiply real with diffrential pointwise then sum all elements
   -- For computing differential of dot product
-  _∙∂_ : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
+  _∙d_ : {shape : Shape} → Exp shape ℝ → V shape → Exp Scalar 𝟙-form
+  -- Scaling: multiply the left operand to all differential on the grid
+  -- of right operand
+  -- For computing differential of scaling
+  _*∙d_ : {shape : Shape} → Exp Scalar ℝ → V shape → Exp shape 𝟙-form
+  -- Differential scaling: the otherway around
+  -- Multiply all the numbers on the grid of right operand to the
+  -- differential on the left 
+  -- For computing differential of scaling
+  _∙*d_ : {shape : Shape} → Exp shape ℝ → V Scalar → Exp shape 𝟙-form
 
   -- TODO: Add more constructors: scale, power, division, trigonometry, log, exp, fourier-transform
 ```
@@ -269,25 +275,36 @@ Constructors 𝟙-form, for computing differentials.
 ```
 
 ```
+infix 5 _+_i 
 infixl 6 _+_ 
 infixl 7 _*_ _*∂_
 infix 8 _∙_ _∙∂_
--- _+_i 
 
 ```
 
 
 ```
 
+_+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
+_+_ = Sum
+
+_*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
+_*_ = {!!}
+
+_∙_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+_∙_ = {!!}
+
+_*∙_ : {shape : Shape} → {nt : Number} → Exp Scalar (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
+_*∙_ = {!!}
 
 var : VarId → Exp [] ℝ
-var x = Var (VV x [])
+var x = Var (VV x)
 
 var1D : VarId → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
-var1D x m = Var (VV x (m ∷ []))
+var1D x m = Var (VV x)
 
 var2D : VarId → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
-var2D x m n = Var (VV x (m ∷ n ∷ []))
+var2D x m n = Var (VV x)
 
 ```
 
@@ -312,69 +329,88 @@ partialDerivative' (‵ c) x = ‵ 0.0
 If f is a scalar variable, then partial derivative is 1[shape] if shape is scalar and
 x == y, otherwise 0[shape].
 ```
-partialDerivative' (Var (VV y .[])) (VV x []) = case (x ≈ y) of λ
+partialDerivative' {shape = []} (Var (VV y)) (VV x) = case (x ≈ y) of λ
   { (yes _) → ‵ 1.0
   ; (no _) → ‵ 0.0
   }
-partialDerivative' (Var (VV y .[])) (VV x (n:ns)) =  ‵ 0.0
+partialDerivative' {shape = (n ∷ ns)} (Var (VV y)) (VV x) = ‵ 0.0
 ```
 
 Sum we can apply sum rule
 ```
-partialDerivative' (u + v) x = partialDerivative' u x + partialDerivative' v x
+partialDerivative' (Sum u v) x = partialDerivative' u x + partialDerivative' v x
 
 ```
 But here is where it got tricky!
-
-(partialDerivative' u x) is Exp shape 𝟙-form, but v is Exp Scalar ℝ
-So it is invalid to construct v *∂ (partialDerivative' u x) here.
-```
-partialDerivative' (u * v) x = {!!}
-```
-And also dot product
 y and z can be of higher dimensions, but we only have partialDerivative where the first
 argument is scalar.
-```
-partialDerivative' (u ∙ v) x = {!!}
-```
-So this doesn't seem to work
 
-We need other approach!
+We can't make the recursive call!
+```
+partialDerivative' (Dot u v) x = {!!}
+partialDerivative' f = {!!}
+```
+So we need other approach!
+
 
 
 ** Plan
 
-The first step is to take differential (multi-dimensional of course), with the following rules:
-  d(x + y) = dx + dy
-  d(xy) = ydx + xdy
-  d(x ∙ y) = x ∙ dy + y ∙ dx
-  d(c) = 0  ∀constant c (here 0 is the zero value of 𝟙-form, not ℝ)
-
-  ...more rules as we add more operators later, such as d(FT(x)) = FT(d(x)) 
-
+We add 𝟙-form and do the transformation
 
 ```
+times-d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
+times-d u (Sum v₁ v₂) = times-d u v₁ + times-d u v₂
+times-d u d0 = d0
+times-d u (v *d x) =  (u * v)  *d x
+times-d u (v ∙d x) =  (u *∙ v) ∙d x 
+times-d u (v *∙d x) = (v *∙ u) *d x
+times-d u (v ∙*d x) = (u * v) ∙*d x
+
+dot-d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
+dot-d u (Sum v₁ v₂) = dot-d u v₁ + dot-d u v₂
+dot-d u d0 = d0
+dot-d u (v *d x) = (u * v)   ∙d x
+dot-d u (v ∙d x) = (u *∙ v)  ∙d x
+dot-d u (v *∙d x) = (v *∙ u) ∙d x
+dot-d u (v ∙*d x) = (u ∙ v)  *d x
+
+scale-d : {shape : Shape} → Exp Scalar ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
+scale-d u (Sum v₁ v₂) = scale-d u v₁ + scale-d u v₂
+scale-d u d0 = d0
+scale-d u (v *d x) = (u *∙ v)   *d x
+scale-d u (v ∙d x) = (u *∙ v)   ∙d x
+scale-d u (v *∙d x) = (u * v)  *∙d x
+scale-d u (v ∙*d x) = (u *∙ v) ∙*d x
+
+d-scale : {shape : Shape} → Exp shape ℝ → Exp Scalar 𝟙-form → Exp shape 𝟙-form
+d-scale u (Sum v₁ v₂) = d-scale u v₁ + d-scale u v₂
+d-scale u d0 = d0
+d-scale u (v *d x) = (v *∙ u) ∙*d x
+d-scale u (v ∙d x) = {!!}
+d-scale u (v *∙d x) = {!!}
+d-scale u (v ∙*d x) = {!!}
+
 d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form
-d (‵ x) = DZero
-d (Var x) = DVar x
-d (u + v) = d v + d v
-d (u * v) = u *∂ d v + v *∂ d u
-d (u ∙ v) = u ∙∂ d v + v ∙∂ d v
-
+d (‵ x) = d0
+d (Var x) =  (‵ 1.0) *d x
+d (Sum u v) = d u + d v
+d (Product u v) = times-d u (d v) + times-d v (d u)
+d (Dot u v) = dot-d u (d v) + dot-d v (d u)
+d (Scale u v) = {!!}
 ```
 
 ```
 
-
 ```
 
-After take differential, we can transform the expression so that it always end up with the form
+-- After take differential, we can transform the expression so that it always end up with the form
 
-  // TODO: Data type of this form
-  Either:
-    - DZero (1)
-    - (Exp Scalar ℝ) *∂ (DVar Scalar x) (2)
-    - (Exp shape ℝ) ∙∂ (DVar shape y) (3)
-    - Sum of operands that either in the form of (2) and (3)
+--   // TODO: Data type of this form
+--   Either:
+--     - DZero (1)
+--     - (Exp Scalar ℝ) *∂ (DVar Scalar x) (2)
+--     - (Exp shape ℝ) ∙∂ (DVar shape y) (3)
+--     - Sum of operands that either in the form of (2) and (3)
 
-Then we can extract all partial derivatives.
+-- Then we can extract all partial derivatives.
