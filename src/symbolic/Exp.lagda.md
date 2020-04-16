@@ -188,7 +188,7 @@ data ElementType : Set where
 
 ```  
 
-V is our datatype for variable identifier. Each variable is uniquely identified by a name and a shape.
+Var is our datatype for variable identifier. Each variable is uniquely identified by a name and a shape.
 ```
 
 data VarId : Set where
@@ -209,24 +209,30 @@ Z ≈ Y = no (λ ())
 Z ≈ Z = yes refl
 
 
-data V : Shape → Set where
-  VV : {shape : Shape} → VarId → V shape
+data Var : Shape → Set where
+  V : {shape : Shape} → VarId → Var shape
+
+
+
+data Prim : Shape → Set where
+  PLit : {shape : Shape} → Float → Prim shape
+  PVar : {shape : Shape} → Var shape → Prim shape
+  
+
+
+
 
 ```
 
 Now, expression constructors
 ```
 data Exp : Shape → ElementType → Set where
-  -- From literal Float value
-  ‵_ : {shape : Shape} → Float → Exp shape ℝ
-  -- From variable identifier.
-  Var : {shape : Shape} → V shape → Exp shape ℝ
+  -- From primitive
+  EPrim : {shape : Shape} → Prim shape → Exp shape ℝ
 
   -- Pointwise sum of expressions
   -- Arguments is non-empty list of expressions because addition is associative
-  -- We can only sum same shape and same element type
-  -- ℝ, ℂ, or 𝟙-form are all addable.
-  Sum : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
+  Sum : {shape : Shape} →  Exp shape ℝ → Exp shape ℝ  → Exp shape ℝ
 
   -- Pointwise product of expressions
   -- Arguments is non-empty list of expressions because multiplication is associative
@@ -235,11 +241,12 @@ data Exp : Shape → ElementType → Set where
   Product : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp shape ℝ
 
   -- Inner product, multiply pointwise then sum all elements
-  Dot : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp Scalar (Num nt)
+  Dot : {shape : Shape} → Exp shape ℝ → Exp shape ℝ → Exp Scalar ℝ
 
-  --
-  Scale : {shape : Shape} → Exp Scalar ℝ → Exp shape ℝ → Exp shape ℝ 
+  -- Invariant: scalar must be primitive
+  Scale : {shape : Shape} → Prim Scalar → Exp shape ℝ → Exp shape ℝ 
 
+  -- TODO: Add more constructors: scale, power, division, trigonometry, log, exp, fourier-transform
 
 ```
 Complex number 
@@ -251,34 +258,43 @@ Complex number
 Constructors 𝟙-form, for computing differentials.
 ```
   -- The zero value of 𝟙-form
+  Sumd : {shape : Shape} → Exp shape 𝟙-form → Exp shape 𝟙-form → Exp shape 𝟙-form
   d0 : {shape : Shape} → Exp shape 𝟙-form
   -- Pointwise multiplication real with diffrential pointwise 
   -- e.g d(2 * x) = 2 *∂ (dx)
-  _*d_ : {shape : Shape} → Exp shape ℝ → V shape → Exp shape 𝟙-form
+  _*d_ : {shape : Shape} → Exp shape ℝ → Var shape → Exp shape 𝟙-form
   -- Multiply real with diffrential pointwise then sum all elements
   -- For computing differential of dot product
-  _∙d_ : {shape : Shape} → Exp shape ℝ → V shape → Exp Scalar 𝟙-form
+  _∙d_ : {shape : Shape} → Exp shape ℝ → Var shape → Exp Scalar 𝟙-form
   -- Scaling: multiply the left operand to all differential on the grid
   -- of right operand
   -- For computing differential of scaling
-  _*∙d_ : {shape : Shape} → Exp Scalar ℝ → V shape → Exp shape 𝟙-form
+  _*∙d_ : {shape : Shape} → Exp Scalar ℝ → Var shape → Exp shape 𝟙-form
   -- Differential scaling: the otherway around
   -- Multiply all the numbers on the grid of right operand to the
   -- differential on the left 
   -- For computing differential of scaling
-  _∙*d_ : {shape : Shape} → Exp shape ℝ → V Scalar → Exp shape 𝟙-form
-
-  -- TODO: Add more constructors: scale, power, division, trigonometry, log, exp, fourier-transform
-```
+  _∙*d_ : {shape : Shape} → Exp shape ℝ → Var Scalar → Exp shape 𝟙-form
 
 ```
+
+```
+data OExp : Shape → ElementType → Set where
+  ELit : {shape : Shape} → Float → OExp shape ℝ
+  EVar : {shape : Shape} → Var shape → OExp shape ℝ
+  Sum : {shape : Shape} →  OExp shape ℝ → OExp shape ℝ  → OExp shape ℝ
+  Product : {shape : Shape} → OExp shape ℝ → OExp shape ℝ → OExp shape ℝ
+  Dot : {shape : Shape} → OExp shape ℝ → OExp shape ℝ → OExp Scalar ℝ
+  Scale : {shape : Shape} → OExp Scalar ℝ → OExp shape ℝ → OExp shape ℝ 
+
+
 ```
 
 ```
 infix 5 _+_i 
 infixl 6 _+_ 
-infixl 7 _*_ _*∂_
-infix 8 _∙_ _∙∂_
+infixl 7 _*_ 
+infix 8 _∙_ 
 
 ```
 
@@ -286,7 +302,7 @@ infix 8 _∙_ _∙∂_
 ```
 
 _+_ : {shape : Shape} → {et : ElementType} → Exp shape et → Exp shape et → Exp shape et
-_+_ = Sum
+_+_ = {!!}
 
 _*_ : {shape : Shape} → {nt : Number} → Exp shape (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
 _*_ = {!!}
@@ -297,14 +313,42 @@ _∙_ = {!!}
 _*∙_ : {shape : Shape} → {nt : Number} → Exp Scalar (Num nt) → Exp shape (Num nt) → Exp shape (Num nt)
 _*∙_ = {!!}
 
-var : VarId → Exp [] ℝ
-var x = Var (VV x)
+Re : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+Re (a + b i) = a
 
-var1D : VarId → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
-var1D x m = Var (VV x)
+Im : {shape : Shape} → Exp shape ℂ → Exp shape ℝ
+Im (a + b i) = b
 
-var2D : VarId → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
-var2D x m n = Var (VV x)
+convert : OExp Scalar ℝ → Exp Scalar ℝ
+convert (Sum u v) = convert u + convert v
+convert (Product u v) = convert u * convert v
+convert (Dot (Sum u v) w) = convert (Dot u w) + convert (Dot v w)
+convert (Dot (Dot u v) w) = convert (Dot u v) * convert w
+convert (Dot (Scale u v) w) = convert u * convert (Dot v w)
+convert (Dot (ELit x) w) = {!!}
+convert (Dot (EVar x) w) = {!!}
+convert (Dot (Product u v) w) = {!!}
+convert (Scale u v) = convert u * convert v
+convert (ELit x) = EPrim (PLit x)
+convert (EVar x) = EPrim (PVar x)
+
+-- convert : {shape : Shape} → OExp shape ℝ → Exp shape ℝ
+-- convert (ELit x) = EPrim (PLit x)
+-- convert (EVar x) = EPrim (PVar x)
+-- convert (Sum u v) = {! convert u + convert v!}
+-- convert (Product u u₁) = {!!}
+-- convert (Dot u u₁) = {!!}
+-- convert (Scale u u₁) = {!!}
+
+
+-- var : VarId → Exp [] ℝ
+-- var x = PVar (V x)
+
+-- var1D : VarId → (n : Nat.ℕ) → Exp (n ∷ []) ℝ
+-- var1D x m = PVar (V x)
+
+-- var2D : VarId → (m n : Nat.ℕ) → Exp (m ∷ n ∷ []) ℝ
+-- var2D x m n = PVar (V x)
 
 ```
 
@@ -319,21 +363,21 @@ chain rule.
 Multi-dimensional derivatives, however, is not as so.
 We can try:
 ```
-partialDerivative' : {shape : Shape} → (f : Exp Scalar ℝ) → V shape → Exp shape ℝ
+partialDerivative' : {shape : Shape} → (f : Exp Scalar ℝ) → Var shape → Exp shape ℝ
 ```
 If f is constant, then partial derivative is 0[shape]
 ```
-partialDerivative' (‵ c) x = ‵ 0.0
+-- partialDerivative' (‵ c) x = ‵ 0.0
 ```
 
 If f is a scalar variable, then partial derivative is 1[shape] if shape is scalar and
 x == y, otherwise 0[shape].
 ```
-partialDerivative' {shape = []} (Var (VV y)) (VV x) = case (x ≈ y) of λ
-  { (yes _) → ‵ 1.0
-  ; (no _) → ‵ 0.0
-  }
-partialDerivative' {shape = (n ∷ ns)} (Var (VV y)) (VV x) = ‵ 0.0
+-- partialDerivative' {shape = []} (PVar (V y)) (V x) = case (x ≈ y) of λ
+--   { (yes _) → ‵ 1.0
+--   ; (no _) → ‵ 0.0
+--   }
+-- partialDerivative' {shape = (n ∷ ns)} (PVar (V y)) (V x) = ‵ 0.0
 ```
 
 Sum we can apply sum rule
@@ -360,7 +404,7 @@ We add 𝟙-form and do the transformation
 
 ```
 times-d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
-times-d u (Sum v₁ v₂) = times-d u v₁ + times-d u v₂
+times-d u (Sumd v₁ v₂) = times-d u v₁ + times-d u v₂
 times-d u d0 = d0
 times-d u (v *d x) =  (u * v)  *d x
 times-d u (v ∙d x) =  (u *∙ v) ∙d x 
@@ -368,7 +412,7 @@ times-d u (v *∙d x) = (v *∙ u) *d x
 times-d u (v ∙*d x) = (u * v) ∙*d x
 
 dot-d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form → Exp Scalar 𝟙-form
-dot-d u (Sum v₁ v₂) = dot-d u v₁ + dot-d u v₂
+dot-d u (Sumd v₁ v₂) = dot-d u v₁ + dot-d u v₂
 dot-d u d0 = d0
 dot-d u (v *d x) = (u * v)   ∙d x
 dot-d u (v ∙d x) = (u *∙ v)  ∙d x
@@ -376,28 +420,21 @@ dot-d u (v *∙d x) = (v *∙ u) ∙d x
 dot-d u (v ∙*d x) = (u ∙ v)  *d x
 
 scale-d : {shape : Shape} → Exp Scalar ℝ → Exp shape 𝟙-form → Exp shape 𝟙-form
-scale-d u (Sum v₁ v₂) = scale-d u v₁ + scale-d u v₂
+scale-d u (Sumd v₁ v₂) = scale-d u v₁ + scale-d u v₂
 scale-d u d0 = d0
 scale-d u (v *d x) = (u *∙ v)   *d x
 scale-d u (v ∙d x) = (u *∙ v)   ∙d x
 scale-d u (v *∙d x) = (u * v)  *∙d x
 scale-d u (v ∙*d x) = (u *∙ v) ∙*d x
 
-d-scale : {shape : Shape} → Exp shape ℝ → Exp Scalar 𝟙-form → Exp shape 𝟙-form
-d-scale u (Sum v₁ v₂) = d-scale u v₁ + d-scale u v₂
-d-scale u d0 = d0
-d-scale u (v *d x) = (v *∙ u) ∙*d x
-d-scale u (v ∙d x) = {!!}
-d-scale u (v *∙d x) = {!!}
-d-scale u (v ∙*d x) = {!!}
-
 d : {shape : Shape} → Exp shape ℝ → Exp shape 𝟙-form
-d (‵ x) = d0
-d (Var x) =  (‵ 1.0) *d x
+d (EPrim (PLit x)) = d0
+d (EPrim (PVar x)) = EPrim (PLit 0.0) *d x
 d (Sum u v) = d u + d v
-d (Product u v) = times-d u (d v) + times-d v (d u)
-d (Dot u v) = dot-d u (d v) + dot-d v (d u)
-d (Scale u v) = {!!}
+d (Product u v) = {!!}
+d (Dot u v) = {!!}
+d (Scale u@(PLit x) v) =  scale-d (EPrim u) (d v)
+d (Scale u@(PVar x) v) = scale-d (EPrim u) (d v) + (v ∙*d x) 
 ```
 
 ```
