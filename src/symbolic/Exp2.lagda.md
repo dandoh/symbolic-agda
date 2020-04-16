@@ -273,7 +273,13 @@ To compute partial derivatie we just have to traverse the 𝟙-form and extract
 
 ```
 ∂_/∂_ : {shape : Shape} → Exp Scalar ℝ → Var shape → Exp shape ℝ
-∂ f /∂ x =  {!!}
+∂ f /∂ x = collect (d f) x
+  where
+    collect : {s₁ s₂ : Shape} → Exp s₁ 𝟙-form → Var s₂ → Exp s₂ ℝ
+    collect {s₁} {s₂} d0 x = ELit 0.0
+    collect {s₁} {s₂} (Sumd u v) x = collect u x + collect v x
+    collect {s₁} {s₂} (u *d v) x = {!!} -- TODO: u if same shape same var, 0.0 otherwise
+    collect {.[]} {s₂} (u ∙d v) x = {!!} -- TODO: u if same shape same var, 0.0 otherwise
 ```
 
 ```
